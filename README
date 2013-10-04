@@ -1,0 +1,3 @@
+Here is the Python code that can be used to train a stacked denoising
+autoencoder. This code was used to prepare the paper for Notes of Kazan
+Federal University in September, 2013, and to get results for the dissertation.
