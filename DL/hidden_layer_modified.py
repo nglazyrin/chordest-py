@@ -96,16 +96,19 @@ class HiddenRecurrentLayer(HiddenLayer):
 #                       else activation(lin_output))
         # parameters of the model
         self.params = [self.W, self.b, self.U]
+        #self.input = theano.printing.Print('input: ')(self.input)
         
         # recurrent function (using tanh activation function) and linear output
         # activation function
-        def step(x_t, h_tm1):
-            lin_t = T.dot(x_t, self.W) + self.b + T.dot(h_tm1, self.U)
+        def step(x_t, h_tm1, W, b, U):
+            #h_tm1 = theano.printing.Print('h_tm1: ')(h_tm1)
+            lin_t = T.dot(x_t, W) + b + T.dot(h_tm1, U)
             y_t = activation(lin_t)
             return y_t, lin_t
 
         # the hidden state `h` for the entire sequence, and the output for the
         # entire sequence `y` (first dimension is always time)
-        [self.output, self.lin_output], _ = theano.scan(step,
+        [self.output, self.lin_output], _ = theano.scan(fn=step,
                                                sequences=self.input,
-                                               outputs_info=[self.prev, None])
+                                               outputs_info=[self.prev, None],
+                                               non_sequences=[self.W, self.b, self.U])

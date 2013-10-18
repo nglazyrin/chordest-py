@@ -48,10 +48,17 @@ class SdA(object):
 
         """
         
-        print("Creating a stacked denoising autoencoder with:")
+        if recurrent_layer >= 0 or (layers and isinstance(layers[1][-1], HiddenRecurrentLayer)):
+            print("Creating a recurrent stacked denoising autoencoder with:")
+        else:
+            print("Creating a stacked denoising autoencoder with:")
         print("\tinput size: " + str(n_ins))
         print("\thidden layers sizes: " + str(hidden_layers_sizes))
         print("\toutput size: " + str(n_outs))
+        if recurrent_layer >= 0:
+            print recurrent_layer
+        elif (layers and isinstance(layers[1][-1], HiddenRecurrentLayer)):
+            print("\trecurrent layer #: " + str(len(layers[1]) - 1))
 
         self.sigmoid_layers = []
         self.dA_layers = []
@@ -236,9 +243,9 @@ class SdA(object):
                                  outputs=cost,
                                  updates=updates,
                                  givens={self.x: train_set_x[batch_begin:
-                                                             batch_end]})#,
-                                #mode=theano.compile.MonitorMode(
-                                #post_func=detect_nan))
+                                                             batch_end]})#, # comment here
+                                 #mode=theano.compile.MonitorMode(
+                                 #post_func=detect_nan))
             # append `fn` to the list of functions
             pretrain_fns.append(fn)
 
@@ -287,8 +294,6 @@ class SdA(object):
         for param, gparam in zip(self.params, gparams):
             updates[param] = param - gparam * learning_rate
         updates=collections.OrderedDict(updates.items())
-#        if isinstance(self.sigmoid_layers[-1], HiddenRecurrentLayer):
-#            updates[self.sigmoid_layers[-1].prev] = self.sigmoid_layers[-1].output
 
         if (useQuadratic):
             train_fn = theano.function(inputs=[index],

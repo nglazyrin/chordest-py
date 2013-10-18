@@ -9,15 +9,16 @@ import cPickle
 import theano
 import matplotlib.pyplot as p
 
-with open('model/SdA12.dat', 'rb') as f:
+prefix = 'E:/personal/dissertation/sda.48-36/model/'
+with open(prefix + 'sda0.dat', 'rb') as f:
     (da, logl, sigmoid) = cPickle.load(f)
-with open('model/sda_layers.dat', 'rb') as f:
-    (da0, sigmoid0) = cPickle.load(f)
+with open(prefix + 'layers0.dat', 'rb') as f:
+    (da_layers, sigmoid_layers) = cPickle.load(f)
 idx0 = 0
-idx1 = 10
+idx1 = 16
 s = da[idx0].W[idx1]
-#s0 = da0[idx0].W[idx1]
-s0 = sigmoid.W[15]
+s0 = da_layers[idx0].W[idx1]
+#s0 = sigmoid.W[15]
 f = theano.function([], s)
 f0 = theano.function([], s0)
 y = f()

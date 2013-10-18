@@ -9,10 +9,11 @@ import os, sys
 import time
 import csv
 import numpy
+import theano
 import cPickle
 
 from DL.SdA_modified import SdA
-from Utils.util import list_spectrum_data, shuffle_2, asarray
+from Utils.util import list_spectrum_data, shuffle_2_numpy
 
 file_root = 'E:/personal/KFU/'
 
@@ -21,10 +22,9 @@ class MyException(Exception):
 
 class SdATrainer(object):
     
-    def __init__(self, outs, sda_file, log_activation, is_vector_y,
-                 train_file = file_root + 'train/train_dA_c.csv',
-                 layers_file = file_root + 'model/sda_layers.dat',
-                 ins = 48,  layers_sizes = [96, 48], recurrent_layer = -1):
+    def __init__(self, ins, layers_sizes, outs, log_activation,
+                 sda_file, train_file, layers_file,
+                 is_vector_y = False, recurrent_layer = -1):
         self.train_file = train_file
         self.layers_file = layers_file
         self.sda_file = sda_file
@@ -34,7 +34,7 @@ class SdATrainer(object):
         self.corruption_levels = [.2, .2, .2]
         self.outs = outs
         self.pretrain_lr=0.03
-        self.finetune_lr=0.01 # was 0.01
+        self.finetune_lr=0.01
         self.pretraining_epochs=15
         self.finetune_epochs=15
         self.training_epochs=1000
@@ -52,28 +52,41 @@ class SdATrainer(object):
         return array
 
     def read_data(self):
+        print 'reading data from ' + self.train_file
         with open(self.train_file, 'rb') as f:
             reader = csv.reader(f)
             (array, chords) = list_spectrum_data(reader, components=self.ins)
+        
         array = self.prepare_data(array)
         chords = self.prepare_chords(chords)
+#        array = numpy.asarray(array, dtype=theano.config.floatX)
+        chords = numpy.asarray(chords, dtype=theano.config.floatX)
+        
         train = int(0.7 * len(array))
         test = int(0.85 * len(array))
-        train_array = asarray(array[:train])
-        train_chords = self.chords_to_array(chords[:train])
+        tr = numpy.copy(array[:train])
+        tr_ch = numpy.copy(chords[:train])
+        train_array = theano.shared(array[:train], borrow = True)
+        train_chords = theano.shared(chords[:train], borrow = True)
         
-        test_array = asarray(array[train:test])
-        test_chords = self.chords_to_array(chords[train:test])
+        test_array = theano.shared(array[train:test], borrow = True)
+        test_chords = theano.shared(chords[train:test], borrow = True)
         
-        valid_array = asarray(array[test:])
-        valid_chords = self.chords_to_array(chords[test:])
+        valid_array = theano.shared(array[test:], borrow = True)
+        valid_chords = theano.shared(chords[test:], borrow = True)
         
-        [train_shuffled, chords_shuffled] = shuffle_2(array[:train], chords[:train])
-        train_shuffled = asarray(train_shuffled)
-        chords_shuffled = self.chords_to_array(chords_shuffled)
-        
-        return [[train_array, train_chords], [test_array, test_chords], \
-                [valid_array, valid_chords], [train_shuffled, chords_shuffled]]
+        shuffle_2_numpy(tr, tr_ch)
+        train_shuffled = theano.shared(tr, borrow = True)
+        chords_shuffled = theano.shared(tr_ch, borrow = True)
+       
+        if self.recurrent_layer >= 0:
+            return [[train_shuffled, chords_shuffled], [test_array, test_chords], \
+                    [valid_array, valid_chords], [train_array, train_chords]]
+        else:
+            del train_array
+            del train_chords
+            return [[train_shuffled, chords_shuffled], [test_array, test_chords], \
+                    [valid_array, valid_chords]]
 
     def load_layers(self):
         da = []
@@ -106,23 +119,22 @@ class SdATrainer(object):
     
         """
     
+        layers = self.load_layers()
         datasets = self.read_data()
     
-        train_set_x, train_set_y = datasets[0]
-        valid_set_x, valid_set_y = datasets[1]
-        test_set_x, test_set_y = datasets[2]
-        train_shuffled, chords_shuffled = datasets[3]
-        datasets = datasets[0:3]
+        train_shuffled, chords_shuffled = datasets[0]
+#        if self.recurrent_layer >= 0:
+#            train_set_x, train_set_y = datasets[3]
+#        datasets = datasets[0:3]
     
         # compute number of minibatches for training, validation and testing
-        n_train_batches = train_set_x.get_value(borrow=True).shape[0]
+        n_train_batches = train_shuffled.get_value(borrow=True).shape[0]
         n_train_batches /= self.batch_size
     
         # numpy random generator
         print '... building the model'
     
         # construct the stacked denoising autoencoder class
-        layers = self.load_layers()
         if (layers):
             sda = SdA(n_ins=self.ins, hidden_layers_sizes=self.layers_sizes,
                       n_outs=self.outs, log_activation=self.log_activation,
@@ -171,10 +183,9 @@ class SdATrainer(object):
     
         # get the training, validation and testing function for the model
         print '... getting the finetuning functions'
-        # only use shuffled train data for fine tuning when network is not recurrent
-        if (self.recurrent_layer < 0):
-            datasets[0][0] = train_shuffled
-            datasets[0][1] = chords_shuffled
+        # use non-shuffled train data for fine tuning in recurrent network
+        if (self.recurrent_layer >= 0):
+            datasets[0] = datasets[3]
         train_fn, validate_model, test_model = sda.build_finetune_functions(
                     datasets=datasets, batch_size=self.batch_size,
                     learning_rate=self.finetune_lr, useQuadratic=not self.is_vector_y)
@@ -199,7 +210,6 @@ class SdATrainer(object):
         
     def runFineTuningLoop(self, n_train_batches, train_fn, validate_model, test_model):
         # early-stopping parameters
-        #n_train_batches = train_set_x.get_value(borrow=True).shape[0]
         patience = self.finetune_epochs * n_train_batches  # look as this many examples regardless
         validation_frequency = min(n_train_batches, patience / 2)
                                       # go through this many

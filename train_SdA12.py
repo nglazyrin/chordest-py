@@ -18,14 +18,17 @@ class SdATrainerChroma(SdATrainer):
     def chords_to_array(self, chords):
         return asarray(chords)
     
-def main(model_file = 'model/sda.dat',
+def main(ins, layers_sizes, recurrent_layer,
+         model_file = 'model/sda.dat',
          train_file = 'sda.csv',
-         layers_file = 'layers.dat',
-         ins = 48, layers_sizes = [96, 48], recurrent_layer = -1):
-    tr = SdATrainerChroma(12, model_file, T.tanh, False,
+         layers_file = 'layers.dat'):
+    tr = SdATrainerChroma(ins = ins,
+                          layers_sizes = layers_sizes,
+                          outs = 12,
+                          log_activation = T.tanh,
+                          sda_file = model_file,
                           train_file = train_file,
                           layers_file = layers_file,
-                          ins = ins, layers_sizes = layers_sizes,
                           recurrent_layer = recurrent_layer)
     tr.train_SdA()
 

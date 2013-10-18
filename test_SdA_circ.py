@@ -40,7 +40,8 @@ class test_SdA_circ(TestIterator):
                      components=self.n_ins + 12 * subnotes, allow_no_chord=True)
         result = None
         for offset in range(12):
-            data = numpy.asmatrix(before, dtype=theano.config.floatX)
+            #data = numpy.asmatrix(before, dtype=theano.config.floatX)
+            data = before
 #            if extra_octave:
             start, end = offset * subnotes, offset * subnotes + self.n_ins
             data = data[:,start:end]

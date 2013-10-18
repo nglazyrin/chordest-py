@@ -34,3 +34,7 @@ nosetests.xml
 .project
 .pydevproject
 .spyderproject
+
+# My local ignores
+/doc
+/Archive

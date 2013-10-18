@@ -69,7 +69,7 @@ def asarray(array):
                                  borrow=True)
 
 def as_int_array(array):
-    return theano.shared(numpy.asarray(array, dtype='int32'),
+    return theano.shared(numpy.asarray(array, dtype='int8'),
                                  borrow=True)
 
 def asmatrix(array):
@@ -125,16 +125,26 @@ def to_tile(array, size):
     return result.tolist()
 
 def list_spectrum_data(reader, components=200, allow_no_chord=False, allow_non_majmin=True):
-    array = []
+    array = numpy.empty([0, components], dtype=theano.config.floatX)
+    values = []
     chords = []
+    rows = 0
     for row in reader:
         if (len(row) != components + 1):
             raise OverflowError()
         chord = row[-1]
         if ((chord or allow_no_chord) and (allow_non_majmin or chord in chord_list)):
             r = [ float(x) for x in row[:-1] ]
-            array.append(r)
+#            array = numpy.append(array, [r], axis=0)
+            values.append(r)
             chords.append(row[-1])
+        rows = rows + 1
+        if (rows % 50000 == 0):
+            array = numpy.append(array, values, axis=0)
+            values = []
+            print str(rows) + ' rows have been read'
+    if (len(values) > 1):
+        array = numpy.append(array, values, axis=0)
     return (array, chords)
 
 def list_spectrum_only(reader, components=200):
@@ -165,7 +175,13 @@ def shuffle_2(list1, list2):
         list1_shuf.append(list1[i])
         list2_shuf.append(list2[i])
     return (list1_shuf, list2_shuf)
-
+    
+def shuffle_2_numpy(a, b):
+    rng_state = numpy.random.get_state()
+    numpy.random.shuffle(a)
+    numpy.random.set_state(rng_state)
+    numpy.random.shuffle(b)
+    
 def get_root(chord):
     root = None
     for x in notes:
