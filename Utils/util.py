@@ -139,7 +139,7 @@ def list_spectrum_data(reader, components=200, allow_no_chord=False, allow_non_m
             values.append(r)
             chords.append(row[-1])
         rows = rows + 1
-        if (rows % 50000 == 0):
+        if (rows % 100000 == 0):
             array = numpy.append(array, values, axis=0)
             values = []
             print str(rows) + ' rows have been read'
