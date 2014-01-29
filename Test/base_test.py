@@ -6,6 +6,8 @@ Created on Thu Feb 14 22:24:51 2013
 """
 
 import os
+import sys
+import time
 
 class TestIterator(object):
     
@@ -26,6 +28,7 @@ class TestIterator(object):
     
     def iterate(self):
         files_processed = 0
+        start_time = time.clock()
         for dirname, dirnames, filenames in os.walk(self.input_dir):
             for filename in filenames:
                 if filename.endswith('.csv'):
@@ -37,4 +40,6 @@ class TestIterator(object):
                     files_processed = files_processed + 1
                     if files_processed % 10 == 0:
                         print (str(files_processed) + ' files processed')
+        end_time = time.clock()
         print('Done')
+        print >> sys.stderr, ('The test code ran for %.2fm' % ((end_time - start_time) / 60.))
