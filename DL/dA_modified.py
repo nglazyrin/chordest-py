@@ -157,13 +157,13 @@ class dA(object):
                 correctly as it only support float32 for now.
 
         """
-        noise = self.theano_rng.normal(size=input.shape, std=corruption_level, dtype=theano.config.floatX)
-        act = self.theano_rng.binomial(size=input.shape, n=1, p= 1-0.3, dtype=theano.config.floatX)
-        return noise * act + input
+#        noise = self.theano_rng.normal(size=input.shape, std=corruption_level, dtype=theano.config.floatX)
+#        act = self.theano_rng.binomial(size=input.shape, n=1, p= 1-0.3, dtype=theano.config.floatX)
+#        return noise * act + input
 #        return T.sum(input, noise)
-#        return  self.theano_rng.binomial(size=input.shape, n=1,
-#                                         p=1 - corruption_level,
-#                                         dtype=theano.config.floatX) * input
+        return  self.theano_rng.binomial(size=input.shape, n=1,
+                                         p=1 - corruption_level,
+                                         dtype=theano.config.floatX) * input
 
     def get_hidden_values(self, input):
         """ Computes the values of the hidden layer """
@@ -183,7 +183,8 @@ class dA(object):
         """ This function computes the cost and the updates for one trainng
         step of the dA """
 
-        tilde_x = self.get_corrupted_input(self.x, corruption_level)
+        # this is how if-then-else is written in Theano
+        tilde_x = T.switch(T.gt(corruption_level, 0), self.get_corrupted_input(self.x, corruption_level), self.x)
         y = self.get_hidden_values(tilde_x)
         z = self.get_reconstructed_input(y)
         act = T.dot(tilde_x, self.W) + self.b
