@@ -143,7 +143,7 @@ def list_spectrum_data(reader, components=200, allow_no_chord=False, allow_non_m
             array = numpy.append(array, values, axis=0)
             values = []
             print str(rows) + ' rows have been read'
-    if (len(values) > 1):
+    if (len(values) > 0):
         array = numpy.append(array, values, axis=0)
     return (array, chords)
 
